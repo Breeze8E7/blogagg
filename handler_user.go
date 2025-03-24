@@ -17,14 +17,12 @@ func handlerRegister(s *state, cmd command) error {
 
 	name := cmd.Args[0]
 
-	// Check if user already exists
 	_, err := s.db.GetUser(context.Background(), name)
 	if err == nil {
 		// User exists
 		return fmt.Errorf("user %s already exists", name)
 	}
 
-	// User doesn't exist, create them
 	user, err := s.db.CreateUser(context.Background(), database.CreateUserParams{
 		ID:        uuid.New(),
 		CreatedAt: time.Now().UTC(),
@@ -74,4 +72,21 @@ func handlerLogin(s *state, cmd command) error {
 func printUser(user database.User) {
 	fmt.Printf(" * ID:      %v\n", user.ID)
 	fmt.Printf(" * Name:    %v\n", user.Name)
+}
+
+func handlerUsers(s *state, cmd command) error {
+	users, err := s.db.GetUsers(context.Background())
+	if err != nil {
+		return fmt.Errorf("couldn't get users: %w", err)
+	}
+	currentUser := s.cfg.CurrentUserName
+
+	for _, user := range users {
+		if user.Name == currentUser {
+			fmt.Printf("* %s (current)\n", user.Name)
+		} else {
+			fmt.Printf("* %s\n", user.Name)
+		}
+	}
+	return nil
 }
