@@ -1,34 +1,54 @@
 package main
 
 import (
-	"fmt"
+	"database/sql"
 	"log"
 	"os"
 
 	"github.com/breeze/blogagg/internal/config"
+	"github.com/breeze/blogagg/internal/database"
+	_ "github.com/lib/pq"
 )
+
+type state struct {
+	db  *database.Queries
+	cfg *config.Config
+}
 
 func main() {
 	cfg, err := config.Read()
 	if err != nil {
 		log.Fatalf("error reading config: %v", err)
 	}
-	s := state{config: &cfg}
+
+	db, err := sql.Open("postgres", cfg.DBURL)
+	if err != nil {
+		log.Fatalf("error connecting to db: %v", err)
+	}
+	defer db.Close()
+	dbQueries := database.New(db)
+
+	programState := &state{
+		db:  dbQueries,
+		cfg: &cfg,
+	}
+
 	cmds := commands{
-		cmds: map[string]func(*state, command) error{},
+		registeredCommands: make(map[string]func(*state, command) error),
 	}
 	cmds.register("login", handlerLogin)
+	cmds.register("register", handlerRegister)
+
 	if len(os.Args) < 2 {
-		fmt.Println("Error: Not enough arguments provided")
-		os.Exit(1)
+		log.Fatal("Usage: cli <command> [args...]")
+		return
 	}
-	cmd := command{
-		name: os.Args[1],
-		args: os.Args[2:],
-	}
-	err = cmds.run(&s, cmd)
+
+	cmdName := os.Args[1]
+	cmdArgs := os.Args[2:]
+
+	err = cmds.run(programState, command{Name: cmdName, Args: cmdArgs})
 	if err != nil {
-		fmt.Println("Error:", err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
 }

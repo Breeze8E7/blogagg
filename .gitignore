@@ -1,0 +1,4 @@
+# Exclude configuration with credentials
+~/.gatorconfig.json
+.gatorconfig.json
+*gatorconfig.json
